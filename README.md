@@ -1,6 +1,6 @@
 # AeruginosaProteotyping: Proteomic and Genomic Tools for *Pseudomonas aeruginosa* Analysis
 
-This repository provides Python tools for analyzing genomic and proteomic data of *Pseudomonas aeruginosa*. It includes scripts for ARG and VF analysis, heatmaps, GO term visualization, and biomarker identification.
+This repository provides Python tools for analyzing genomic and proteomic data of *Pseudomonas aeruginosa*, for chapter V of my doctoral thesis. It includes scripts for ARG and VF analysis, heatmaps, GO term visualization, and biomarker identification.
 
 ## Features
 - **Genome Metrics**:
