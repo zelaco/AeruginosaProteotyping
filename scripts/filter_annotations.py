@@ -1,37 +1,25 @@
 import pandas as pd
-import argparse
 
-def merge_annotations(eggnog_file, interpro_file, output_file):
-    eggnog_df = pd.read_excel(eggnog_file)
-    interpro_df = pd.read_excel(interpro_file)
+# File paths
+paer_file = 'Data/Proteome_simple.xlsx'
+putida_eggnog_file = 'Data/Proteomics/aeruginosa_eggnog.xlsx'
+putida_interpro_file = 'Data/Proteomics/aeruginosa_interproscan.xlsx'
 
-    # Merge and clean data
-    merged_df = pd.merge(
-        eggnog_df,
-        interpro_df,
-        left_on='Query ID',
-        right_on='SeqName',
-        how='outer',
-        suffixes=('_EggNOG', '_InterPro')
-    )
-    merged_df.fillna('', inplace=True)
+# Load data
+putida_p_df = pd.read_excel(paer_file)  
+putida_eggnog_df = pd.read_excel(putida_eggnog_file)  # Load eggnog file
+putida_interpro_df = pd.read_excel(putida_interpro_file)  # Load interpro file
 
-    # Deduplicate GO terms
-    merged_df['GO'] = merged_df.apply(
-        lambda row: '; '.join(sorted(set(row['GOs'].split(';') + row['GO IDs'].split(';')))),
-        axis=1
-    )
-    merged_df['#GO'] = merged_df['GO'].apply(lambda x: len(x.split(';')))
+# Extract the Accession column
+accessions = putida_p_df['Accession'].tolist()
 
-    merged_df.drop(columns=['GOs', 'GO IDs'], inplace=True)
-    merged_df.to_excel(output_file, index=False)
-    print(f"Merged annotations saved to {output_file}")
+# Filter putida_eggnog based on Query ID
+filtered_eggnog = putida_eggnog_df[putida_eggnog_df['Query ID'].isin(accessions)]
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Merge EggNOG and InterPro annotations.")
-    parser.add_argument("--eggnog-file", required=True, help="Path to the filtered EggNOG file.")
-    parser.add_argument("--interpro-file", required=True, help="Path to the filtered InterPro file.")
-    parser.add_argument("--output-file", required=True, help="Path to save the merged annotations.")
-    args = parser.parse_args()
+# Filter putida_interpro based on SeqName
+filtered_interpro = putida_interpro_df[putida_interpro_df['SeqName'].isin(accessions)]
 
-    merge_annotations(args.eggnog_file, args.interpro_file, args.output_file)
+# Save the filtered data to new Excel files
+filtered_eggnog.to_excel('paer_eggnog.xlsx', index=False)
+filtered_interpro.to_excel('paer_interpro.xlsx', index=False)
+

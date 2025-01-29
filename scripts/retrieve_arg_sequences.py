@@ -1,41 +1,55 @@
 import pandas as pd
-import os
 from Bio import SeqIO
-import argparse
+from Bio.Seq import Seq
+import os
 
-def retrieve_arg_sequences(excel_file, fasta_dir, nucleotide_output, protein_output):
-    # Read the Excel file
-    arg_df = pd.read_excel(excel_file)
-    arg_accessions = arg_df['Accession'].tolist()
+# Input files
+excel_file = "Data/betalactamases.xlsx"  
+fasta_dir = "Data/Genomes/"               
+# Output files
+nucleotide_output = "nucleotide_sequences.fasta"
+protein_output = "protein_sequences.fasta"
 
-    # Initialize lists to hold nucleotide and protein sequences
-    nucleotide_sequences = []
-    protein_sequences = []
+# Load the Excel file
+data = pd.read_excel(excel_file)
 
-    # Iterate through each FASTA file in the directory
-    for fasta_file in os.listdir(fasta_dir):
-        fasta_path = os.path.join(fasta_dir, fasta_file)
-        for record in SeqIO.parse(fasta_path, "fasta"):
-            if record.id in arg_accessions:
-                nucleotide_sequences.append(record)
-                protein_sequences.append(record.translate())
-
-    # Write nucleotide sequences to file
-    with open(nucleotide_output, "w") as nucleotide_file:
-        SeqIO.write(nucleotide_sequences, nucleotide_file, "fasta")
-    print(f"Nucleotide sequences saved to {nucleotide_output}")
-
-    # Write protein sequences to file
-    with open(protein_output, "w") as protein_file:
-        SeqIO.write(protein_sequences, protein_file, "fasta")
-    print(f"Protein sequences saved to {protein_output}")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Retrieve ARG sequences from genome FASTA files.")
-    parser.add_argument("--excel-file", required=True, help="Path to the Excel file with ARG metadata.")
-    parser.add_argument("--fasta-dir", required=True, help="Path to the directory containing FASTA files.")
-    parser.add_argument("--output-nucleotide", required=True, help="Path to save the nucleotide sequences.")
-    parser.add_argument("--output-protein", required=True, help="Path to save the protein sequences.")
-    args = parser.parse_args()
-
-    retrieve_arg_sequences(args.excel_file, args.fasta_dir, args.output_nucleotide, args.output_protein)
+# Open output FASTA files
+with open(nucleotide_output, "w") as nuc_out, open(protein_output, "w") as prot_out:
+    # Process each line in the Excel file
+    for index, row in data.iterrows():
+        # Extract details from the row
+        file_name = row["#FILE"]
+        fasta_file = os.path.join(fasta_dir, f"{file_name}.fasta")  # Dynamically select the FASTA file
+        sequence_id = row["SEQUENCE"]
+        start = int(row["START"])
+        end = int(row["END"])
+        strand = row["STRAND"]
+        gene = row["GENE"]
+        
+        # Check if the FASTA file exists
+        if not os.path.exists(fasta_file):
+            print(f"FASTA file {fasta_file} not found. Skipping.")
+            continue
+        
+        # Parse the FASTA file and search for the sequence
+        fasta_sequences = {record.id: record for record in SeqIO.parse(fasta_file, "fasta")}
+        
+        if sequence_id in fasta_sequences:
+            genome_seq = fasta_sequences[sequence_id].seq
+            extracted_seq = genome_seq[start-1:end]  # Adjust for 1-based indexing
+            
+            # Reverse complement if the strand is "-"
+            if strand == "-":
+                extracted_seq = extracted_seq.reverse_complement()
+            
+            # Construct the FASTA header
+            fasta_header = f">{file_name}_{gene}"
+            
+            # Write nucleotide sequence to the nucleotide FASTA file
+            nuc_out.write(f"{fasta_header}\n{extracted_seq}\n")
+            
+            # Translate to protein and write to the protein FASTA file
+            protein_seq = extracted_seq.translate()
+            prot_out.write(f"{fasta_header}\n{protein_seq}\n")
+        else:
+            print(f"Sequence ID {sequence_id} not found in {fasta_file}.")

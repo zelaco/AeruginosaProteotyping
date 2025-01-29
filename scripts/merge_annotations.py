@@ -20,9 +20,6 @@ merged_df = pd.merge(
 # Fill missing values with empty strings to handle missing data
 merged_df.fillna('', inplace=True)
 
-# Debug: Print merged DataFrame columns
-print("Merged DataFrame columns:", merged_df.columns)
-
 # Function to merge and deduplicate GO terms
 def merge_go_terms(row):
     eggnog_go = str(row['GOs']).split(';') if row['GOs'] else []

@@ -4,50 +4,61 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap
-import argparse
 
-def generate_arg_heatmap(file_path, output_file):
-    df = pd.read_excel(file_path)
-    df.set_index('Isolate', inplace=True)
+# Load the data
+file_path = 'paerARG.xlsx' 
+df = pd.read_excel(file_path)
 
-    genes_df = df.drop('ST', axis=1).apply(pd.to_numeric, errors='coerce')
-    binary_genes_df = genes_df.applymap(lambda x: 1 if x > 0 else 0)
-    binary_genes_df['ST'] = df['ST'].astype(str)
+# Set 'Isolate' as the index to display isolate names on the heatmap
+df.set_index('Isolate', inplace=True)
 
-    st_labels = LabelEncoder().fit_transform(binary_genes_df['ST'])
-    palette = sns.color_palette("tab10", n_colors=len(set(st_labels)))
-    st_colors = dict(zip(binary_genes_df['ST'].unique(), palette))
-    row_colors = binary_genes_df['ST'].map(st_colors)
+# Convert gene columns to numeric, assuming 'ST' is a column in your DataFrame
+genes_df = df.drop('ST', axis=1).apply(pd.to_numeric, errors='coerce')
 
-    cmap = ListedColormap(['white', '#031d59'])
+# Convert to binary presence/absence (any value > 0 is presence)
+binary_genes_df = genes_df.applymap(lambda x: 1 if x > 0 else 0)
 
-    sns.set_context("notebook", font_scale=1.1)
-    clustermap = sns.clustermap(
-        binary_genes_df.drop('ST', axis=1),
-        row_cluster=True,
-        col_cluster=False,
-        cmap=cmap,
-        figsize=(12, 12),
-        row_colors=row_colors,
-        cbar_pos=None
-    )
+# Add 'ST' column back to the DataFrame
+binary_genes_df['ST'] = df['ST'].astype(str)
 
-    clustermap.ax_heatmap.legend(
-        handles=[
-            Patch(facecolor=st_colors[st], edgecolor='black', label=st)
-            for st in st_colors
-        ],
-        title='ST',
-        bbox_to_anchor=(-0.1, 1.25),
-        frameon=True
-    )
-    plt.savefig(output_file, dpi=300)
-    print(f"ARG heatmap saved to {output_file}")
+# Generate a color palette for 'ST'
+st_labels = LabelEncoder().fit_transform(df['ST'].astype(str))
+palette = sns.color_palette("tab10", n_colors=len(set(st_labels)))
+st_colors = dict(zip(df['ST'].unique(), palette))
+row_colors = df['ST'].map(st_colors)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate an ARG heatmap.")
-    parser.add_argument("--file-path", required=True, help="Path to the ARG data Excel file.")
-    parser.add_argument("--output-file", required=True, help="Path to save the heatmap.")
-    args = parser.parse_args()
+# Create a custom colormap for presence (1) and absence (0)
+cmap = ListedColormap(['white', '#031d59'])  # Presence is dark blue, absence is white
 
-    generate_arg_heatmap(args.file_path, args.output_file)
+# Generate the clustermap without the top dendrogram and without the colorbar
+sns.set_context("notebook", font_scale=1.1)
+clustermap = sns.clustermap(
+    binary_genes_df.drop('ST', axis=1),
+    row_cluster=True,
+    col_cluster=False,  # Remove the top dendrogram
+    cmap=cmap,
+    figsize=(12, 12),
+    row_colors=row_colors,
+    cbar_pos=None,  # Remove the colorbar
+)
+
+# Adjust row labels (isolate names) font size for better visibility
+clustermap.ax_heatmap.set_yticklabels(
+    clustermap.ax_heatmap.get_ymajorticklabels(), fontsize=12
+)
+
+# Create legend patches for 'ST'
+legend_handles = [
+    Patch(facecolor=st_colors[st], edgecolor='black', label=st) for st in st_colors
+]
+
+# Add the legend to the heatmap, positioned to avoid overlap
+clustermap.ax_heatmap.legend(
+    handles=legend_handles,
+    title='ST',
+    bbox_to_anchor=(-0.1, 1.25),
+    frameon=True
+)
+
+# Save the plot as a PNG file
+plt.savefig("Outputs/HeatmapARG.png", dpi=300)
